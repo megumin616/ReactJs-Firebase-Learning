@@ -1,6 +1,38 @@
-#root {
-  max-width: 1280px;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.form_container {
+  background: #fff;
+  padding: 20px 30px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 400px;
+  margin-top: 50px;
+}
+
+.box input {
+  margin: 5px 0;
+}
+
+.form_container button {
+  margin: 0 10px;
+}
+
+.app {
+  text-align: start;
+  margin: 10px 10px;
+}
+
+.text-data h2 span {
+  color: rgb(54, 54, 54);
+  font-weight: 400;
+}
+
+.content-data {
+  display: flex;
+}
+.content-data .box {
+  margin: 0 5px;
 }
