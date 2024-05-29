@@ -18,7 +18,7 @@ const initialState = {
   img: "",
 };
 export default function AddData() {
-  const [data, setData] = useState(initialState);
+  const [data, setData] = useState(initialState);  //ต้องการเก็บข้อมูลอะไร ก็กำหนดใน initialState
   const { name, age } = data;
   const [file, setFile] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -40,6 +40,7 @@ export default function AddData() {
     }
   };
 
+  //Upload file ที่ใช้ useEffect เพราะเมื่อมีการเลือกไฟล์ใน <input> แล้ว จะทำการอัพโหลด (firebaase) ทันที
   useEffect(() => {
     const uploadFile = () => {
       // เมื่อมีการเปลี่ยนแปลงใน `file` (ไฟล์ที่ผู้ใช้เลือก), `useEffect()` จะถูกเรียกใช้.
@@ -83,10 +84,13 @@ export default function AddData() {
     file && uploadFile();
   }, [file]);
 
+  //รับค่าจาก <input>
   const handleChange = (e) => {
     setData({ ...data, [e.target.name]: e.target.value });
+    //เป็นการสร้างออบเจ็กต์ใหม่ของข้อมูลโดยนำข้อมูลเดิมมา และแทนที่ค่าของฟิลด์ที่เปลี่ยนแปลงด้วยค่าใหม่ที่ผู้ใช้ป้อนเข้ามา
   };
 
+  //สร้าง Function สำหรับการตรวจสอบว่าได้ใส่ข้อมูลตามที่ต้องการรึเปล่า ในที่นี้คือ ห้ามมีค่าว่าง
   const validata = () => {
     let errors = {};
     if (!name) {
@@ -99,15 +103,16 @@ export default function AddData() {
     return errors;
   };
 
+  //Function อัพข้อมูล
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); //กันการ Refresh จำเป็น
     let errors = validata();
-    if (Object.keys(errors).length) {
-      return setErrors(errors);
+    if (Object.keys(errors).length) { // ถ้ามีข้อผิดพลาด
+      return setErrors(errors); // ตั้งค่า errors ใน state และหยุดการทำงานของฟังก์ชัน
     } else {
-      setErrors({});
-      setIsSubmit(true);
-      if (!id) {
+      setErrors({}); // เคลียร์ errors ใน state
+      setIsSubmit(true); // ตั้งค่า isSubmit เป็น true เพื่อแสดงว่าข้อมูลกำลังถูกส่ง
+      if (!id) { // ถ้าไม่มี id (เพิ่มข้อมูลใหม่)
         try {
           await addDoc(collection(db, "users"), {
             ...data,
@@ -116,7 +121,7 @@ export default function AddData() {
         } catch (error) {
           console.log(error);
         }
-      } else {
+      } else { // ถ้ามี id (อัปเดตข้อมูล)
         try {
             await updateDoc(doc(db, "users", id), {
               ...data,
@@ -172,6 +177,8 @@ export default function AddData() {
           type="submit"
           className="btn btn-primary"
           disabled={progress !== null && progress < 100}
+          //ในกรณีที่ค่าของตัวแปร progress ไม่ใช่ null และค่าของ progress น้อยกว่า 100% ในการอัปโหลดไฟล์.
+          //เพราะว่า หากไฟล์กำลังอยู่ในขั้นตอนกำลังส่งไฟล์ จะไม่สามารถกดปุ่มได้ กันการเกิดข้อผืดพลาด * สำคัญ
         >
           Submit
         </button>
