@@ -1,0 +1,181 @@
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import React, { useEffect, useState } from "react";
+import { db, storage } from "../firebase";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { useNavigate, useParams } from "react-router-dom";
+
+const initialState = {
+  name: "",
+  age: "",
+  img: "",
+};
+export default function AddData() {
+  const [data, setData] = useState(initialState);
+  const { name, age } = data;
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [isSubmit, setIsSubmit] = useState(false);
+  const navigate = useNavigate();
+
+  const { id } = useParams();
+
+  useEffect(() => {
+    id && getSingleUser();
+  }, [id]);
+
+  const getSingleUser = async () => {
+    const docRef = doc(db, "users", id);
+    const snapshot = await getDoc(docRef);
+    if (snapshot.exists()) {
+      setData({ ...snapshot.data() });
+    }
+  };
+
+  useEffect(() => {
+    const uploadFile = () => {
+      // เมื่อมีการเปลี่ยนแปลงใน `file` (ไฟล์ที่ผู้ใช้เลือก), `useEffect()` จะถูกเรียกใช้.
+      const name = new Date().getTime() + file.name;
+      // สร้าง reference ไปยังโฟลเดอร์ใน Firebase Storage โดยใช้ชื่อไฟล์
+      const storageRef = ref(storage, file.name);
+      // เริ่มกระบวนการอัปโหลดไฟล์ด้วย `uploadBytesResumable()`
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        // ติดตามสถานะการอัปโหลดของไฟล์ด้วย `uploadTask.on()` โดยรายงานความคืบหน้าและสถานะของการอัปโหลดในแต่ละขั้นตอน
+        "state_changed",
+        (snapshot) => {
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100; //ส่วนนี้คำนวณความคืบหน้าของการอัปโหลดในรูปแบบของเปอร์เซ็นต์
+          setProgress(progress); //อัปเดตค่าความคืบหน้า เพื่อทำให้ UI แสดงความคืบหน้าที่ถูกต้อง.
+          switch (snapshot.state) {
+            case "paused":
+              console.log("Upload is Pause");
+              break;
+            case "running":
+              console.log("Upload is Running");
+              break;
+            default:
+              break;
+          }
+        },
+        (error) => {
+          console.log(error);
+        },
+        // เมื่อการอัปโหลดเสร็จสมบูรณ์ `() => {...}` จะถูกเรียก เพื่อดึง URL ของไฟล์ที่อัปโหลดเสร็จสมบูรณ์ด้วย
+        //`getDownloadURL()` และเพิ่ม URL นี้ในข้อมูล `data` โดยใช้ `setData()`
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setData((prev) => ({ ...prev, img: downloadURL }));
+          });
+        }
+      );
+    };
+    // ถ้ามีไฟล์ที่เลือกอยู่ ให้เริ่มกระบวนการอัปโหลด
+    file && uploadFile();
+  }, [file]);
+
+  const handleChange = (e) => {
+    setData({ ...data, [e.target.name]: e.target.value });
+  };
+
+  const validata = () => {
+    let errors = {};
+    if (!name) {
+      errors.name = "Name is Required";
+    }
+    if (!age) {
+      errors.age = "Age is Required";
+    }
+
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    let errors = validata();
+    if (Object.keys(errors).length) {
+      return setErrors(errors);
+    } else {
+      setErrors({});
+      setIsSubmit(true);
+      if (!id) {
+        try {
+          await addDoc(collection(db, "users"), {
+            ...data,
+            timestamp: serverTimestamp(),
+          });
+        } catch (error) {
+          console.log(error);
+        }
+      } else {
+        try {
+            await updateDoc(doc(db, "users", id), {
+              ...data,
+              timestamp: serverTimestamp(),
+            });
+          } catch (error) {
+            console.log(error);
+          }
+      }
+      navigate("/");
+    }
+  };
+
+  return (
+    <>
+      <div>
+        <h1>{id ? "Update Data" : "Add Data"}</h1>
+      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label className="form-label">Name:</label>
+          <input
+            type="text"
+            className="form-control"
+            name="name"
+            value={name}
+            autoFocus
+            onChange={handleChange}
+            placeholder={errors.name ? errors.name : "Name..."}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Age</label>
+          <input
+            type="text"
+            className="form-control"
+            name="age"
+            value={age}
+            autoFocus
+            onChange={handleChange}
+            placeholder={errors.age ? errors.age : "Age..."}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Image</label>
+          <input
+            type="file"
+            className="form-control"
+            onChange={(e) => setFile(e.target.files[0])}
+          />
+        </div>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={progress !== null && progress < 100}
+        >
+          Submit
+        </button>
+      </form>
+    </>
+  );
+}
